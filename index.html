@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="ca">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Afina l'Oïda - Estil Graffiti</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Permanent+Marker&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Permanent Marker', cursive;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #3d3d3d; /* Color de fons si la imatge no carrega */
+            background-image: url("https://www.transparenttextures.com/patterns/brick-wall-dark.png"); /* Textura de paret de maons */
+            color: white;
+            margin: 0;
+            text-align: center;
+        }
+        .joc-container {
+            background-color: #d1d1c7; /* Color guix o ciment clar */
+            border: 4px solid #000;
+            width: 600px;
+            padding: 20px;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.7);
+            border-radius: 10px;
+            color: #2c2c2c; /* Text fosc sobre fons clar */
+        }
+        h1 {
+            color: #f1c40f; /* Groc graffiti */
+            font-size: 48px;
+            text-shadow: 3px 3px 0 #000;
+        }
+        .marcadors {
+            display: flex;
+            justify-content: space-between;
+            font-size: 24px;
+            padding: 0 20px;
+            text-shadow: 2px 2px 0 #888;
+        }
+        .controls, .resultats {
+            margin: 30px 0;
+        }
+        button {
+            font-family: 'Permanent Marker', cursive;
+            font-size: 22px;
+            color: #000;
+            background-color: #e74c3c; /* Vermell graffiti */
+            border: 3px solid #000;
+            padding: 15px 25px;
+            cursor: pointer;
+            border-radius: 5px;
+            text-shadow: 1px 1px 0 #fff;
+            transition: all 0.1s;
+        }
+        button:hover {
+            transform: scale(1.05);
+        }
+        button:active {
+            transform: translateY(2px);
+        }
+        button:disabled {
+            background-color: #555;
+            color: #aaa;
+            cursor: not-allowed;
+        }
+        #slider {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 80%;
+            height: 20px;
+            background: #34495e; /* Blau fosc */
+            border: 3px solid #000;
+            border-radius: 10px;
+            cursor: pointer;
+        }
+        #slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 35px;
+            height: 35px;
+            background: #f1c40f; /* Groc graffiti */
+            border: 3px solid #000;
+            border-radius: 50%;
+            cursor: pointer;
+        }
+        #sliderValueDisplay {
+            font-size: 28px;
+            margin-top: 15px;
+            color: #f1c40f;
+            -webkit-text-stroke: 1.5px black;
+        }
+        #missatge {
+            font-size: 24px;
+            height: 30px;
+            font-weight: bold;
+            color: #2c2c2c;
+            text-shadow: none;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="joc-container">
+        <h1>Afina l'Oïda</h1>
+        <div class="marcadors">
+            <span id="puntuacio">Puntuació: 0</span>
+            <span id="ronda">Ronda: 1 / 5</span>
+        </div>
+        <div class="controls">
+            <button id="playTargetBtn">▶️ Escoltar Objectiu</button>
+            <br><br>
+            <input type="range" id="slider" min="100" max="600" value="350" step="1">
+            <div id="sliderValueDisplay">350 Hz</div>
+        </div>
+        <div class="resultats">
+            <button id="checkBtn" disabled>Comprovar</button>
+            <p id="missatge">Escolta el so objectiu per començar</p>
+        </div>
+    </div>
+
+    <script>
+        // --- 1. CONFIGURACIÓ INICIAL I ELEMENTS HTML ---
+        const playTargetBtn = document.getElementById('playTargetBtn');
+        const slider = document.getElementById('slider');
+        const checkBtn = document.getElementById('checkBtn');
+        const puntuacioDisplay = document.getElementById('puntuacio');
+        const rondaDisplay = document.getElementById('ronda');
+        const missatgeDisplay = document.getElementById('missatge');
+        const sliderValueDisplay = document.getElementById('sliderValueDisplay');
+
+        // --- 2. LÒGICA D'ÀUDIO ---
+        let audioContext;
+        let targetOscillator;
+        let userOscillator;
+        let userGain;
+        let isTargetPlaying = false;
+
+        function setupAudio() {
+            if (audioContext) return;
+            audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            
+            userOscillator = audioContext.createOscillator();
+            userGain = audioContext.createGain();
+            userOscillator.type = 'sine';
+            userOscillator.frequency.setValueAtTime(parseFloat(slider.value), audioContext.currentTime);
+            userGain.gain.setValueAtTime(0, audioContext.currentTime);
+
+            userOscillator.connect(userGain);
+            userGain.connect(audioContext.destination);
+            userOscillator.start();
+        }
+
+        function toggleTargetTone() {
+            setupAudio();
+            
+            isTargetPlaying = !isTargetPlaying;
+
+            if (isTargetPlaying) {
+                targetOscillator = audioContext.createOscillator();
+                targetOscillator.type = 'sine';
+                targetOscillator.frequency.setValueAtTime(targetFrequency, audioContext.currentTime);
+                targetOscillator.connect(audioContext.destination);
+                targetOscillator.start();
+
+                userGain.gain.linearRampToValueAtTime(0.3, audioContext.currentTime + 0.1);
+
+                playTargetBtn.textContent = "⏹️ Silenciar Objectiu";
+                checkBtn.disabled = false;
+                missatgeDisplay.textContent = "Mou el slider fins que la vibració desaparegui";
+            } else {
+                targetOscillator.stop(audioContext.currentTime + 0.1);
+                userGain.gain.linearRampToValueAtTime(0, audioContext.currentTime + 0.1);
+
+                playTargetBtn.textContent = "▶️ Escoltar Objectiu";
+            }
+        }
+
+        // --- 3. VARIABLES I ESTATS DEL JOC ---
+        let puntuacion = 0;
+        let rondaActual = 1;
+        const maxRondas = 5;
+        let targetFrequency;
+        const frecuenciasRondas = [440, 200, 500, 430, 100]; // Freqüències fixes per a cada ronda
+
+        // --- 4. LÒGICA PRINCIPAL DEL JOC ---
+
+        function iniciarJoc() {
+            puntuacion = 0;
+            rondaActual = 1;
+            actualitzarMarcadors();
+            prepararRonda();
+        }
+
+        function prepararRonda() {
+            // Freqüència objectiu es pren de l'array segons la ronda actual
+            targetFrequency = frecuenciasRondas[rondaActual - 1];
+            console.log(`Freqüència objectiu d'aquesta ronda: ${targetFrequency} Hz`);
+
+            checkBtn.disabled = true;
+            playTargetBtn.disabled = false;
+            playTargetBtn.textContent = "▶️ Escoltar Objectiu";
+            missatgeDisplay.textContent = 'Prem "Escoltar Objectiu" per començar';
+        }
+
+        function comprovarResultat() {
+            if (isTargetPlaying) {
+                toggleTargetTone(); 
+            }
+            
+            const userFrequency = parseInt(slider.value, 10);
+            const diferencia = Math.abs(targetFrequency - userFrequency);
+            
+            let puntsRonda = 0;
+            let missatgeInicial = '';
+            if (diferencia === 0) { // Comprovació exacta
+                puntsRonda = 100;
+                missatgeInicial = `PERFECTE! (+100 punts)`;
+            } else if (diferencia <= 5) {
+                puntsRonda = 100 - (diferencia * 15);
+                missatgeInicial = `Molt a prop! (+${puntsRonda} punts)`;
+            } else {
+                missatgeInicial = `Has quedat a ${diferencia} Hz de diferència.`;
+            }
+            
+            missatgeDisplay.textContent = missatgeInicial;
+
+            puntuacion += puntsRonda;
+            playTargetBtn.disabled = true; // Desactivem el botó fins la següent ronda
+            checkBtn.disabled = true;
+
+            // Després d'un temps, mostrem la freqüència correcta
+            const tempsEsperaPerResultat = 1500;
+            const tempsTotalEsperaRonda = 3500;
+
+            setTimeout(() => {
+                missatgeDisplay.textContent = `L'objectiu era: ${targetFrequency} Hz`;
+            }, tempsEsperaPerResultat);
+            
+            if (rondaActual >= maxRondas) {
+                setTimeout(acabarJoc, tempsTotalEsperaRonda);
+            } else {
+                rondaActual++;
+                setTimeout(() => {
+                    prepararRonda();
+                    actualitzarMarcadors();
+                }, tempsTotalEsperaRonda);
+            }
+            actualitzarMarcadors();
+        }
+        
+        function acabarJoc() {
+             missatgeDisplay.textContent = `Joc acabat! Puntuació final: ${puntuacion}`;
+             playTargetBtn.disabled = true;
+             checkBtn.disabled = true;
+        }
+
+        function actualitzarMarcadors() {
+            puntuacioDisplay.textContent = `Puntuació: ${puntuacion}`;
+            rondaDisplay.textContent = `Ronda: ${rondaActual} / ${maxRondas}`;
+        }
+
+        // --- 5. GESTIÓ DELS EVENTS ---
+
+        playTargetBtn.addEventListener('click', toggleTargetTone);
+
+        slider.addEventListener('input', () => {
+            if (!audioContext) return;
+            const currentFreq = parseInt(slider.value, 10);
+            userOscillator.frequency.linearRampToValueAtTime(currentFreq, audioContext.currentTime + 0.05);
+            sliderValueDisplay.textContent = `${currentFreq} Hz`; // Actualitza el display
+        });
+
+        checkBtn.addEventListener('click', comprovarResultat);
+
+        // --- INICI DEL JOC ---
+        iniciarJoc();
+        sliderValueDisplay.textContent = `${slider.value} Hz`; // Mostra el valor inicial
+
+    </script>
+</body>
+</html>
+
